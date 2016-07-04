@@ -33,7 +33,7 @@ private:
 	float actualTimeFactor = timeFactor;
 	bool mEqualTimeFactors = true;
 
-	std::list<Planet*> mListOfPlanets;
+	std::vector<Planet*> mVectorOfPlanets;
 	Player *pPlayer;
 
 	sf::Text *pTextTimeFactor;
@@ -45,6 +45,9 @@ private:
 	bool mViewAutoPosition = false;
 
 	unsigned int mDebugCounter = 0;
+
+	bool mFixedEvolveTimeMode = true;
+	sf::Time mFixedEvolveTime = sf::seconds(1.f / 500.f);
 
 public:
 	Universe(sf::View *globalView, sf::View *playerView, bool *showPlayerView, sf::Font *font, sf::Texture *playerTexture);

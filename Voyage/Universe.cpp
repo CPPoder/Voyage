@@ -18,25 +18,25 @@ Universe::Universe(sf::View *globalView, sf::View *playerView, bool *showPlayerV
 	
 	
 	
-	//mListOfPlanets.push_back(new Planet(1.988E30 * 1.0E05, 1.408E03, sf::Vector2<double>(-1.496E11, 0.0), sf::Vector2<double>(0.0, 0.0), sf::Color::Yellow, createPlanetNumber()));
-	mListOfPlanets.push_back(new Planet(5.974E24/* * 1.0E05*/, 5.515E03, sf::Vector2<double>(0.0, 0.0), sf::Vector2<double>(0.0, 0.0), sf::Color::Blue));
-	mListOfPlanets.push_back(new Planet(7.349E22/* * 1.0E05*/, 3.341E03, sf::Vector2<double>(3.844E08, 0.0), sf::Vector2<double>(0.0, 1.023E03), sf::Color(120, 120, 120)));
+	//mVectorOfPlanets.push_back(new Planet(1.988E30 * 1.0E05, 1.408E03, sf::Vector2<double>(-1.496E11, 0.0), sf::Vector2<double>(0.0, 0.0), sf::Color::Yellow, createPlanetNumber()));
+	mVectorOfPlanets.push_back(new Planet(5.974E24/* * 1.0E05*/, 5.515E03, sf::Vector2<double>(0.0, 0.0), sf::Vector2<double>(0.0, 0.0), sf::Color::Blue));
+	mVectorOfPlanets.push_back(new Planet(7.349E22/* * 1.0E05*/, 3.341E03, sf::Vector2<double>(3.844E08, 0.0), sf::Vector2<double>(0.0, 1.023E03), sf::Color(120, 120, 120)));
 	
 	//Create Planets 1
 	/*
 	unsigned int numberOfPlanets = 10;
 	for (unsigned int i = 0; i < numberOfPlanets; i++)
 	{
-		//mListOfPlanets.push_back(new Planet(1000000000.f, sf::Vector2f(720.f, 450.f) + mySFML::randNormalVector() * 120.f, mySFML::randNormalVector() * 0.1f));
-		mListOfPlanets.push_back(new Planet(1.0E24, 4.0E03, static_cast<sf::Vector2<double>>(mySFML::createNormalVectorWithAngle(i * 2 * 3.141592653f / numberOfPlanets) * 10000000.f), static_cast<sf::Vector2<double>>(mySFML::randNormalVector() * 10000.f) * 0.0, sf::Color::White));
+		//mVectorOfPlanets.push_back(new Planet(1000000000.f, sf::Vector2f(720.f, 450.f) + mySFML::randNormalVector() * 120.f, mySFML::randNormalVector() * 0.1f));
+		mVectorOfPlanets.push_back(new Planet(1.0E24, 4.0E03, static_cast<sf::Vector2<double>>(mySFML::createNormalVectorWithAngle(i * 2 * 3.141592653f / numberOfPlanets) * 10000000.f), static_cast<sf::Vector2<double>>(mySFML::randNormalVector() * 10000.f) * 0.0, sf::Color::White));
 	}
 	*/
 
 	//Create Planets 2
-	unsigned int numberOfPlanets = 100;
+	unsigned int numberOfPlanets = 10;
 	for (unsigned int i = 0; i < numberOfPlanets; i++)
 	{
-		mListOfPlanets.push_back(new Planet(1.0E23, 4.0E03, static_cast<sf::Vector2<double>>(mySFML::createNormalVectorWithAngle(i * 2 * 3.141592653f / numberOfPlanets) * (100000000.f + 10000.f * myMath::randIntervalf(0, 1000))), static_cast<sf::Vector2<double>>(mySFML::randNormalVector() * 10000.f) * 0.0, sf::Color::White));
+		mVectorOfPlanets.push_back(new Planet(1.0E23, 4.0E03, static_cast<sf::Vector2<double>>(mySFML::createNormalVectorWithAngle(i * 2 * 3.141592653f / numberOfPlanets) * (10000000.f + 1000.f * myMath::randIntervalf(0, 1000))), static_cast<sf::Vector2<double>>(mySFML::randNormalVector() * 10000.f) * 0.0, sf::Color::White));
 	}
 
 }
@@ -54,7 +54,7 @@ Universe::~Universe()
 	delete pTextFramesPerSecond;
 	pTextFramesPerSecond = nullptr;
 
-	for (auto planet : mListOfPlanets)
+	for (auto planet : mVectorOfPlanets)
 	{
 		delete planet;
 		planet = nullptr;
@@ -65,8 +65,19 @@ Universe::~Universe()
 //Update
 void Universe::update(sf::RenderWindow *renderWindow, sf::Time frametime)
 {
+	//Choose Frametime or Fixed Time, depending on the Mode
+	sf::Time usedTime;
+	if (mFixedEvolveTimeMode)
+	{
+		usedTime = mFixedEvolveTime;
+	}
+	else
+	{
+		usedTime = frametime;
+	}
+
 	//User Input: Change Time Factor & Movements
-	changeTimeFactor(frametime);
+	changeTimeFactor(usedTime);
 	updateControlOfPlayer();
 
 	//Determine several Forces
@@ -79,10 +90,10 @@ void Universe::update(sf::RenderWindow *renderWindow, sf::Time frametime)
 	updateActualTimeFactor();
 
 	//Evolve the Simulation
-	evolveSimulation(renderWindow, frametime * actualTimeFactor);
+	evolveSimulation(renderWindow, usedTime * actualTimeFactor);
 
 	//Manage Collisions
-	manageCollisions(renderWindow, frametime);
+	manageCollisions(renderWindow, usedTime);
 	
 	//Update Render-Things
 	updateView(renderWindow, frametime);
@@ -93,7 +104,7 @@ void Universe::update(sf::RenderWindow *renderWindow, sf::Time frametime)
 //Handle Events
 void Universe::handleEvents(EventData eventData)
 {
-	for (auto planet : mListOfPlanets)
+	for (auto planet : mVectorOfPlanets)
 	{
 		planet->handleEvents(eventData);
 	}
@@ -103,7 +114,7 @@ void Universe::handleEvents(EventData eventData)
 //Render
 void Universe::render(sf::RenderWindow *renderWindow)
 {
-	for (auto planet : mListOfPlanets)
+	for (auto planet : mVectorOfPlanets)
 	{
 		planet->render(renderWindow);
 	}
@@ -135,12 +146,12 @@ void Universe::changeTimeFactor(sf::Time frametime)
 //Determine Gravity Between Planets
 void Universe::determineGravityBetweenPlanets()
 {
-	for (auto planet : mListOfPlanets)
+	for (auto planet : mVectorOfPlanets)
 	{
 		float planetMass = planet->getMass();
 		sf::Vector2<double> planetPos = planet->getPosition();
 		planet->resetForces();
-		for (auto gravitatingPlanet : mListOfPlanets)
+		for (auto gravitatingPlanet : mVectorOfPlanets)
 		{
 			if (gravitatingPlanet == planet)
 			{
@@ -160,11 +171,11 @@ void Universe::determineGravityBetweenPlanets()
 void Universe::determineElasticForcesBetweenPlanets()
 {
 	float elasticity = 1.0E19;
-	for (std::list<Planet*>::iterator planetIt1 = mListOfPlanets.begin(); planetIt1 != mListOfPlanets.end(); planetIt1++)
+	for (std::vector<Planet*>::iterator planetIt1 = mVectorOfPlanets.begin(); planetIt1 != mVectorOfPlanets.end(); planetIt1++)
 	{
 		sf::Vector2<double> planet1Pos = (*planetIt1)->getPosition();
 		double planet1Rad = (*planetIt1)->getRadius();
-		for (std::list<Planet*>::iterator planetIt2 = planetIt1; planetIt2 != mListOfPlanets.end(); planetIt2++)
+		for (std::vector<Planet*>::iterator planetIt2 = planetIt1; planetIt2 != mVectorOfPlanets.end(); planetIt2++)
 		{
 			if (planetIt1 == planetIt2)
 			{
@@ -188,7 +199,7 @@ void Universe::determineElasticForcesBetweenPlanets()
 void Universe::determineFriction()
 {
 	double frictionCoefficient = 1.0E16;
-	for (auto planet : mListOfPlanets)
+	for (auto planet : mVectorOfPlanets)
 	{
 		sf::Vector2<double> velocity = planet->getVelocity();
 		double velValue = mySFML::lengthOf(velocity);
@@ -199,11 +210,9 @@ void Universe::determineFriction()
 //Determine Gravity for the Player
 void Universe::determineGravityForPlayer()
 {
-	pPlayer->resetForces();
-	pPlayer->resetTorsionalMoments();
 	sf::Vector2<double> playerPos = pPlayer->getPosition();
 	double playerMass = pPlayer->getMass();
-	for (auto gravitatingPlanet : mListOfPlanets)
+	for (auto gravitatingPlanet : mVectorOfPlanets)
 	{
 		sf::Vector2<double> distVec = gravitatingPlanet->getPosition() - playerPos;
 		double distance = mySFML::lengthOf(distVec);
@@ -218,7 +227,7 @@ void Universe::determineGravityForPlayer()
 void Universe::updateActualTimeFactor()
 {
 	double biggestAcceleration = 0.0;
-	for (auto planet : mListOfPlanets)
+	for (auto planet : mVectorOfPlanets)
 	{
 		double acceleration = mySFML::lengthOf(planet->getForces()) / planet->getMass();
 		if (acceleration > biggestAcceleration)
@@ -236,17 +245,18 @@ void Universe::updateActualTimeFactor()
 void Universe::manageCollisions(sf::RenderWindow *renderWindow, sf::Time frametime)
 {
 	bool collisionOccured = true;
-	unsigned int const numberOfCollisionFixAttempts = 3;
+	unsigned int const numberOfCollisionFixAttempts = 50;
 	unsigned int counterOfCollisionFixAttempts = 0;
-	while (collisionOccured && (counterOfCollisionFixAttempts < numberOfCollisionFixAttempts)) //Repeat till no collisions occurr anymore
+	bool infiniteNumberOfFixAttempts = true;
+	while (collisionOccured && ((counterOfCollisionFixAttempts < numberOfCollisionFixAttempts) || infiniteNumberOfFixAttempts)) //Repeat till no collisions occurr anymore
 	{
 		counterOfCollisionFixAttempts++;
 		collisionOccured = false;
-		for (auto planetIt1 = mListOfPlanets.begin(); planetIt1 != mListOfPlanets.end(); planetIt1++)
+		for (auto planetIt1 = mVectorOfPlanets.begin(); planetIt1 != mVectorOfPlanets.end(); planetIt1++)
 		{
 			double planet1Mass = (*planetIt1)->getMass();
 			double planet1Rad = (*planetIt1)->getRadius();
-			for (auto planetIt2 = planetIt1; planetIt2 != mListOfPlanets.end(); planetIt2++)
+			for (auto planetIt2 = planetIt1; planetIt2 != mVectorOfPlanets.end(); planetIt2++)
 			{
 				sf::Vector2<double> planet1Pos = (*planetIt1)->getPosition();
 				sf::Vector2<double> planet1LastPos = (*planetIt1)->getLastPosition();
@@ -262,7 +272,10 @@ void Universe::manageCollisions(sf::RenderWindow *renderWindow, sf::Time frameti
 				}
 				sf::Vector2<double> distVector = planet1Pos - planet2Pos;
 				double distance = mySFML::lengthOf(distVector); //This is a source of errors, because planets that overlap alternated after one evolution are very near
-				if (distance <= (planet1Rad + planet2Rad))
+				sf::Vector2<double> relativeVelocity = planet1Velocity - planet2Velocity;
+				double velocityProjectedOnDistance = mySFML::scalarProduct(distVector, relativeVelocity);
+				bool comingCloser = (velocityProjectedOnDistance < 0);
+				if (distance <= (planet1Rad + planet2Rad) && comingCloser)
 				{
 					//std::cout << "Collision " << mDebugCounter << "!" << std::endl;
 					//mySFML::outputOnTerminal((*planetIt1)->getPosition(), "Pos1: ", "\t");
@@ -273,7 +286,7 @@ void Universe::manageCollisions(sf::RenderWindow *renderWindow, sf::Time frameti
 					//Determine time since collision
 					sf::Time timeStepOfLastEvolution = actualTimeFactor * frametime;
 					double lastDistance = mySFML::lengthOf(planet1LastPos - planet2LastPos);
-					double relativeVelocityValue = mySFML::lengthOf(planet1Velocity - planet2Velocity);
+					double relativeVelocityValue = mySFML::lengthOf(relativeVelocity);
 					//sf::Time timeBetweenLastEvolutionAndCollision = sf::seconds(lastDistance / relativeVelocityValue); //Big Error due to circle problem
 					sf::Time timeBetweenLastEvolutionAndCollision = sf::seconds(0.f);
 					sf::Time timeSinceCollision = timeStepOfLastEvolution - timeBetweenLastEvolutionAndCollision;
@@ -305,26 +318,33 @@ void Universe::manageCollisions(sf::RenderWindow *renderWindow, sf::Time frameti
 
 					//Evolve forwards in time till origin
 					evolveSimulation(renderWindow, timeSinceCollision);
+
+					//Friction during collision
+					(*planetIt1)->setVelocity((*planetIt1)->getVelocity() * 0.95);
+					(*planetIt2)->setVelocity((*planetIt2)->getVelocity() * 0.95);
 				}
 			}
 		}
 	}
+	std::cout << "Number of Fix Attempts: " << counterOfCollisionFixAttempts << std::endl;
 }
 
 //Update the Control of the Player (User Input)
 void Universe::updateControlOfPlayer()
 {
+	pPlayer->resetForces();
+	pPlayer->resetTorsionalMoments();
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W))
 	{
 		pPlayer->addForce(pPlayer->getOrientation() * 200000000.0);
 	}
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
 	{
-		pPlayer->addTorsionalMoment(30.0);
+		pPlayer->addTorsionalMoment(40.0);
 	}
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A))
 	{
-		pPlayer->addTorsionalMoment(-30.0);
+		pPlayer->addTorsionalMoment(-40.0);
 	}
 }
 
@@ -435,7 +455,7 @@ void Universe::updateTexts(sf::RenderWindow *renderWindow, sf::Time frametime)
 void Universe::evolveSimulation(sf::RenderWindow *renderWindow, sf::Time time)
 {
 	//std::cout << time.asMilliseconds() << std::endl;
-	for (auto planet : mListOfPlanets)
+	for (auto planet : mVectorOfPlanets)
 	{
 		planet->update(renderWindow, time);
 	}
