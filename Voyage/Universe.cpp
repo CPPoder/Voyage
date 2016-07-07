@@ -33,10 +33,10 @@ Universe::Universe(sf::View *globalView, sf::View *playerView, bool *showPlayerV
 	*/
 
 	//Create Planets 2
-	unsigned int numberOfPlanets = 10;
+	unsigned int numberOfPlanets = 100;
 	for (unsigned int i = 0; i < numberOfPlanets; i++)
 	{
-		mVectorOfPlanets.push_back(new Planet(1.0E23, 4.0E03, static_cast<sf::Vector2<double>>(mySFML::createNormalVectorWithAngle(i * 2 * 3.141592653f / numberOfPlanets) * (10000000.f + 1000.f * myMath::randIntervalf(0, 1000))), static_cast<sf::Vector2<double>>(mySFML::randNormalVector() * 10000.f) * 0.0, sf::Color::White));
+		mVectorOfPlanets.push_back(new Planet(1.0E23, 4.0E03, static_cast<sf::Vector2<double>>(mySFML::createNormalVectorWithAngle(i * 2 * 3.141592653f / numberOfPlanets) * (100000000.f + 10000.f * myMath::randIntervalf(0, 1000))), static_cast<sf::Vector2<double>>(mySFML::randNormalVector() * 10000.f) * 0.0, sf::Color::White));
 	}
 
 }
@@ -242,7 +242,7 @@ void Universe::updateActualTimeFactor()
 }
 
 //Manage Collisions
-void Universe::manageCollisions(sf::RenderWindow *renderWindow, sf::Time frametime)
+void Universe::manageCollisions(sf::RenderWindow *renderWindow, sf::Time time)
 {
 	bool collisionOccured = true;
 	unsigned int const numberOfCollisionFixAttempts = 50;
@@ -275,6 +275,7 @@ void Universe::manageCollisions(sf::RenderWindow *renderWindow, sf::Time frameti
 				sf::Vector2<double> relativeVelocity = planet1Velocity - planet2Velocity;
 				double velocityProjectedOnDistance = mySFML::scalarProduct(distVector, relativeVelocity);
 				bool comingCloser = (velocityProjectedOnDistance < 0);
+				double sumOfRadii = planet1Rad + planet2Rad;
 				if (distance <= (planet1Rad + planet2Rad) && comingCloser)
 				{
 					//std::cout << "Collision " << mDebugCounter << "!" << std::endl;
@@ -284,15 +285,18 @@ void Universe::manageCollisions(sf::RenderWindow *renderWindow, sf::Time frameti
 					collisionOccured = true;
 
 					//Determine time since collision
-					sf::Time timeStepOfLastEvolution = actualTimeFactor * frametime;
-					double lastDistance = mySFML::lengthOf(planet1LastPos - planet2LastPos);
+					sf::Time timeStepOfLastEvolution = actualTimeFactor * time;
+					sf::Vector2<double> lastDistance = planet1LastPos - planet2LastPos;
+					double lastDistanceValue = mySFML::lengthOf(lastDistance);
 					double relativeVelocityValue = mySFML::lengthOf(relativeVelocity);
-					//sf::Time timeBetweenLastEvolutionAndCollision = sf::seconds(lastDistance / relativeVelocityValue); //Big Error due to circle problem
-					sf::Time timeBetweenLastEvolutionAndCollision = sf::seconds(0.f);
+					double scalarProd = mySFML::scalarProduct(lastDistance, relativeVelocity);
+					sf::Time timeBetweenLastEvolutionAndCollision = sf::seconds(-(scalarProd + sqrt(scalarProd * scalarProd + relativeVelocityValue * relativeVelocityValue * (sumOfRadii * sumOfRadii - lastDistanceValue * lastDistanceValue))) / (relativeVelocityValue * relativeVelocityValue)); //Big Error due to circle problem
+					//sf::Time timeBetweenLastEvolutionAndCollision = sf::seconds(0.f);
+					//std::cout << "timeStepOfLastEvolution: " << timeStepOfLastEvolution.asSeconds() << "\t" << "timeBetweenLastEvolutionAndCollision: " << timeBetweenLastEvolutionAndCollision.asSeconds() << std::endl;
 					sf::Time timeSinceCollision = timeStepOfLastEvolution - timeBetweenLastEvolutionAndCollision;
 
 					//Evolve backwards in time till collision
-					evolveSimulation(renderWindow, -timeSinceCollision); //Do negative sf::Time values work???
+					evolveSimulation(renderWindow, -timeSinceCollision);
 
 					//Execute collision algorithm
 					sf::Vector2<double> rHat = mySFML::normalize(distVector);
@@ -320,13 +324,13 @@ void Universe::manageCollisions(sf::RenderWindow *renderWindow, sf::Time frameti
 					evolveSimulation(renderWindow, timeSinceCollision);
 
 					//Friction during collision
-					(*planetIt1)->setVelocity((*planetIt1)->getVelocity() * 0.95);
-					(*planetIt2)->setVelocity((*planetIt2)->getVelocity() * 0.95);
+					//(*planetIt1)->setVelocity((*planetIt1)->getVelocity() * 0.95);
+					//(*planetIt2)->setVelocity((*planetIt2)->getVelocity() * 0.95);
 				}
 			}
 		}
 	}
-	std::cout << "Number of Fix Attempts: " << counterOfCollisionFixAttempts << std::endl;
+	//std::cout << "Number of Fix Attempts: " << counterOfCollisionFixAttempts << std::endl;
 }
 
 //Update the Control of the Player (User Input)

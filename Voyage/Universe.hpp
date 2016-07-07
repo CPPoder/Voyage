@@ -64,7 +64,7 @@ private:
 	void determineFriction();
 	void determineGravityForPlayer();
 	void updateActualTimeFactor();
-	void manageCollisions(sf::RenderWindow *renderWindow, sf::Time frametime);
+	void manageCollisions(sf::RenderWindow *renderWindow, sf::Time time);
 	void updateControlOfPlayer();
 	void updateView(sf::RenderWindow *renderWindow, sf::Time frametime);
 	void updateTexts(sf::RenderWindow *renderWindow, sf::Time frametime);
