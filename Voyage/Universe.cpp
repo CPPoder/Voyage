@@ -33,10 +33,13 @@ Universe::Universe(sf::View *globalView, sf::View *playerView, bool *showPlayerV
 	*/
 
 	//Create Planets 2
-	unsigned int numberOfPlanets = 100;
+	unsigned int numberOfPlanets = 0;
 	for (unsigned int i = 0; i < numberOfPlanets; i++)
 	{
-		mVectorOfPlanets.push_back(new Planet(1.0E23, 4.0E03, static_cast<sf::Vector2<double>>(mySFML::createNormalVectorWithAngle(i * 2 * 3.141592653f / numberOfPlanets) * (100000000.f + 10000.f * myMath::randIntervalf(0, 1000))), static_cast<sf::Vector2<double>>(mySFML::randNormalVector() * 10000.f) * 0.0, sf::Color::White));
+		sf::Vector2<double> planetPos = static_cast<sf::Vector2<double>>(mySFML::createNormalVectorWithAngle(i * 2 * 3.141592653f / numberOfPlanets) * (100000000.f + 10000.f * myMath::randIntervalf(0, 1000)));
+		//sf::Vector2<double> planetVel = static_cast<sf::Vector2<double>>(mySFML::randNormalVector() * 10000.f) * 0.0;
+		sf::Vector2<double> planetVel = mySFML::createOrthogonalVector(mySFML::normalize(planetPos)) * 2500.0;
+		mVectorOfPlanets.push_back(new Planet(1.0E23, 4.0E03, planetPos, planetVel, sf::Color::White));
 	}
 
 }
@@ -98,6 +101,9 @@ void Universe::update(sf::RenderWindow *renderWindow, sf::Time frametime)
 	//Update Render-Things
 	updateView(renderWindow, frametime);
 	updateTexts(renderWindow, frametime);
+
+	//Measure the energy
+	determineEnergy();
 }
 
 
@@ -244,6 +250,7 @@ void Universe::updateActualTimeFactor()
 //Manage Collisions
 void Universe::manageCollisions(sf::RenderWindow *renderWindow, sf::Time time)
 {
+	sf::Time timeStepOfLastEvolution = actualTimeFactor * time;
 	bool collisionOccured = true;
 	unsigned int const numberOfCollisionFixAttempts = 50;
 	unsigned int counterOfCollisionFixAttempts = 0;
@@ -259,13 +266,15 @@ void Universe::manageCollisions(sf::RenderWindow *renderWindow, sf::Time time)
 			for (auto planetIt2 = planetIt1; planetIt2 != mVectorOfPlanets.end(); planetIt2++)
 			{
 				sf::Vector2<double> planet1Pos = (*planetIt1)->getPosition();
-				sf::Vector2<double> planet1LastPos = (*planetIt1)->getLastPosition();
+				//sf::Vector2<double> planet1LastPos = (*planetIt1)->getLastPosition();
 				sf::Vector2<double> planet1Velocity = (*planetIt1)->getVelocity();
+				sf::Vector2<double> planet1LastPos = planet1Pos - (static_cast<double>(timeStepOfLastEvolution.asSeconds()) * planet1Velocity);
 				double planet2Mass = (*planetIt2)->getMass();
 				double planet2Rad = (*planetIt2)->getRadius();
 				sf::Vector2<double> planet2Pos = (*planetIt2)->getPosition();
-				sf::Vector2<double> planet2LastPos = (*planetIt2)->getLastPosition();
+				//sf::Vector2<double> planet2LastPos = (*planetIt2)->getLastPosition();
 				sf::Vector2<double> planet2Velocity = (*planetIt2)->getVelocity();
+				sf::Vector2<double> planet2LastPos = planet2Pos - (static_cast<double>(timeStepOfLastEvolution.asSeconds()) * planet2Velocity);
 				if (planetIt1 == planetIt2)
 				{
 					continue;
@@ -285,14 +294,16 @@ void Universe::manageCollisions(sf::RenderWindow *renderWindow, sf::Time time)
 					collisionOccured = true;
 
 					//Determine time since collision
-					sf::Time timeStepOfLastEvolution = actualTimeFactor * time;
 					sf::Vector2<double> lastDistance = planet1LastPos - planet2LastPos;
 					double lastDistanceValue = mySFML::lengthOf(lastDistance);
 					double relativeVelocityValue = mySFML::lengthOf(relativeVelocity);
 					double scalarProd = mySFML::scalarProduct(lastDistance, relativeVelocity);
-					sf::Time timeBetweenLastEvolutionAndCollision = sf::seconds(-(scalarProd + sqrt(scalarProd * scalarProd + relativeVelocityValue * relativeVelocityValue * (sumOfRadii * sumOfRadii - lastDistanceValue * lastDistanceValue))) / (relativeVelocityValue * relativeVelocityValue)); //Big Error due to circle problem
+					sf::Time timeBetweenLastEvolutionAndCollision = -sf::seconds((scalarProd + sqrt(scalarProd * scalarProd + relativeVelocityValue * relativeVelocityValue * (sumOfRadii * sumOfRadii - lastDistanceValue * lastDistanceValue))) / (relativeVelocityValue * relativeVelocityValue)); //Big Error due to circle problem
 					//sf::Time timeBetweenLastEvolutionAndCollision = sf::seconds(0.f);
-					//std::cout << "timeStepOfLastEvolution: " << timeStepOfLastEvolution.asSeconds() << "\t" << "timeBetweenLastEvolutionAndCollision: " << timeBetweenLastEvolutionAndCollision.asSeconds() << std::endl;
+					std::cout << "------------------------------------------------" << std::endl;
+					std::cout << "relativeVelocityValue: " << relativeVelocityValue << std::endl;
+					std::cout << "distance: " << (distance - sumOfRadii) << std::endl;
+					std::cout << "timeStepOfLastEvolution: " << timeStepOfLastEvolution.asSeconds() << "\t" << "timeBetweenLastEvolutionAndCollision: " << timeBetweenLastEvolutionAndCollision.asSeconds() << std::endl;
 					sf::Time timeSinceCollision = timeStepOfLastEvolution - timeBetweenLastEvolutionAndCollision;
 
 					//Evolve backwards in time till collision
@@ -330,7 +341,10 @@ void Universe::manageCollisions(sf::RenderWindow *renderWindow, sf::Time time)
 			}
 		}
 	}
-	//std::cout << "Number of Fix Attempts: " << counterOfCollisionFixAttempts << std::endl;
+	if (counterOfCollisionFixAttempts != 1)
+	{
+		std::cout << "Number of Fix Attempts: " << counterOfCollisionFixAttempts << std::endl;
+	}
 }
 
 //Update the Control of the Player (User Input)
@@ -464,4 +478,47 @@ void Universe::evolveSimulation(sf::RenderWindow *renderWindow, sf::Time time)
 		planet->update(renderWindow, time);
 	}
 	pPlayer->update(renderWindow, time);
+}
+
+//Determine Energy
+void Universe::determineEnergy()
+{
+	double energy = 0.0;
+	unsigned int sizeOfVector = mVectorOfPlanets.size();
+	for (unsigned int planetNumber1 = 0; planetNumber1 < sizeOfVector; planetNumber1++)
+	{
+		//Kinetic Energy
+		double planet1Mass = mVectorOfPlanets.at(planetNumber1)->getMass();
+		double planet1VelVal = mySFML::lengthOf(mVectorOfPlanets.at(planetNumber1)->getVelocity());
+		sf::Vector2<double> planet1Pos = mVectorOfPlanets.at(planetNumber1)->getPosition();
+		energy = energy + (planet1Mass / 2.0 * planet1VelVal * planet1VelVal);
+
+		//Potential Energy
+		for (unsigned int planetNumber2 = 0; planetNumber2 < sizeOfVector; planetNumber2++)
+		{
+			if (planetNumber1 == planetNumber2)
+			{
+				continue;
+			}
+			double planet2Mass = mVectorOfPlanets.at(planetNumber2)->getMass();
+			sf::Vector2<double> planet2Pos = mVectorOfPlanets.at(planetNumber2)->getPosition();
+			energy = energy - (G * planet1Mass * planet2Mass / mySFML::lengthOf(planet2Pos - planet1Pos));
+		}
+	}
+	//std::cout << "Energy: " << energy << std::endl;
+	if (mEnergiesValid)
+	{
+		mLastEnergy = mActualEnergy;
+		mActualEnergy = energy;
+		if ((mActualEnergy - mLastEnergy) > 1.0E29)
+		{
+			std::cout << "Error!!!" << std::endl;
+		}
+	}
+	else
+	{
+		mActualEnergy = energy;
+		mLastEnergy = energy;
+		mEnergiesValid = true;
+	}
 }

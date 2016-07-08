@@ -46,8 +46,12 @@ private:
 
 	unsigned int mDebugCounter = 0;
 
-	bool mFixedEvolveTimeMode = true;
+	bool mFixedEvolveTimeMode = false;
 	sf::Time mFixedEvolveTime = sf::seconds(1.f / 500.f);
+
+	double mLastEnergy;
+	double mActualEnergy;
+	bool mEnergiesValid = false;
 
 public:
 	Universe(sf::View *globalView, sf::View *playerView, bool *showPlayerView, sf::Font *font, sf::Texture *playerTexture);
@@ -69,6 +73,7 @@ private:
 	void updateView(sf::RenderWindow *renderWindow, sf::Time frametime);
 	void updateTexts(sf::RenderWindow *renderWindow, sf::Time frametime);
 	void evolveSimulation(sf::RenderWindow *renderWindow, sf::Time time);
+	void determineEnergy();
 
 
 };
