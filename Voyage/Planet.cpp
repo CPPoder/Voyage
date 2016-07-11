@@ -63,6 +63,10 @@ double Planet::getRadius() const
 {
 	return mRadius;
 }
+double Planet::getDensity() const
+{
+	return mDensity;
+}
 sf::Vector2<double> Planet::getPosition() const
 {
 	return mPosition;
@@ -87,6 +91,10 @@ unsigned int Planet::getPlanetNumber() const
 {
 	return mPlanetNumber;
 }
+sf::Color Planet::getColor() const
+{
+	return pCircleShape->getFillColor();
+}
 
 //Setter
 void Planet::resetForces()
@@ -108,4 +116,8 @@ void Planet::setVelocity(sf::Vector2<double> velocity)
 void Planet::invertVelocity()
 {
 	mVelocity = -mVelocity;
+}
+void Planet::setColor(sf::Color color)
+{
+	pCircleShape->setFillColor(color);
 }

@@ -71,6 +71,12 @@ namespace mySFML {
 		return (vec1.x * vec2.x + vec1.y * vec2.y + vec1.z * vec2.z);
 	}
 
+	//Color division operator
+	sf::Color colorMultiplication(sf::Color color, float factor);
+
+	//Mix colors
+	sf::Color mixColors(sf::Color color1, sf::Color color2, float weight1, float weight2);
+
 }
 
 

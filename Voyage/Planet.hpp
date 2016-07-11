@@ -39,18 +39,21 @@ public:
 
 	double getMass() const;
 	double getRadius() const;
+	double getDensity() const;
 	sf::Vector2<double> getPosition() const;
 	sf::Vector2<double> getVelocity() const;
 	sf::Vector2<double> getAcceleration() const;
 	sf::Vector2<double> getForces() const;
 	sf::Vector2<double> getLastPosition() const;
 	unsigned int getPlanetNumber() const;
+	sf::Color getColor() const;
 
 	void resetForces();
 	void setForces(sf::Vector2<double> forces);
 	void addForce(sf::Vector2<double> force);
 	void setVelocity(sf::Vector2<double> velocity);
 	void invertVelocity();
+	void setColor(sf::Color color);
 
 
 };

@@ -49,5 +49,15 @@ namespace mySFML {
 
 		return (xSmaller && ySmaller);
 	}
+
+	sf::Color mySFML::colorMultiplication(sf::Color color, float factor)
+	{
+		return sf::Color(color.r * factor, color.g * factor, color.b * factor);
+	}
+
+	sf::Color mySFML::mixColors(sf::Color color1, sf::Color color2, float weight1, float weight2)
+	{
+		return (colorMultiplication(color1, weight1) + colorMultiplication(color2, weight2));
+	}
 	
 }

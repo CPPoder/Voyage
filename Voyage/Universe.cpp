@@ -20,7 +20,7 @@ Universe::Universe(sf::View *globalView, sf::View *playerView, bool *showPlayerV
 	
 	//mVectorOfPlanets.push_back(new Planet(1.988E30 * 1.0E05, 1.408E03, sf::Vector2<double>(-1.496E11, 0.0), sf::Vector2<double>(0.0, 0.0), sf::Color::Yellow, createPlanetNumber()));
 	mVectorOfPlanets.push_back(new Planet(5.974E24/* * 1.0E05*/, 5.515E03, sf::Vector2<double>(0.0, 0.0), sf::Vector2<double>(0.0, 0.0), sf::Color::Blue));
-	mVectorOfPlanets.push_back(new Planet(7.349E22/* * 1.0E05*/, 3.341E03, sf::Vector2<double>(3.844E08, 0.0), sf::Vector2<double>(0.0, 1.023E03), sf::Color(120, 120, 120)));
+	mVectorOfPlanets.push_back(new Planet(7.349E22/* * 1.0E05*/, 3.341E03, sf::Vector2<double>(3.844E08, 0.0), 0.0 * sf::Vector2<double>(0.0, 1.023E03), sf::Color(120, 120, 120)));
 	
 	//Create Planets 1
 	/*
@@ -33,13 +33,15 @@ Universe::Universe(sf::View *globalView, sf::View *playerView, bool *showPlayerV
 	*/
 
 	//Create Planets 2
-	unsigned int numberOfPlanets = 0;
+	unsigned int numberOfPlanets = 100;
 	for (unsigned int i = 0; i < numberOfPlanets; i++)
 	{
 		sf::Vector2<double> planetPos = static_cast<sf::Vector2<double>>(mySFML::createNormalVectorWithAngle(i * 2 * 3.141592653f / numberOfPlanets) * (100000000.f + 10000.f * myMath::randIntervalf(0, 1000)));
 		//sf::Vector2<double> planetVel = static_cast<sf::Vector2<double>>(mySFML::randNormalVector() * 10000.f) * 0.0;
-		sf::Vector2<double> planetVel = mySFML::createOrthogonalVector(mySFML::normalize(planetPos)) * 2500.0;
-		mVectorOfPlanets.push_back(new Planet(1.0E23, 4.0E03, planetPos, planetVel, sf::Color::White));
+		sf::Vector2<double> planetVel = /*(static_cast<double>(myMath::randIntervali(1, 2)) - 1.5) * 2.0 * */mySFML::createOrthogonalVector(mySFML::normalize(planetPos)) * 2400.0;
+		sf::Color color = sf::Color(myMath::randIntervali(0, 255), myMath::randIntervali(0, 255), myMath::randIntervali(0, 255));
+		double mass = 1.0E23 * myMath::randIntervali(100, 1000) / 1000.0;
+		mVectorOfPlanets.push_back(new Planet(mass, 4.0E03, planetPos, planetVel, color));
 	}
 
 }
@@ -86,7 +88,7 @@ void Universe::update(sf::RenderWindow *renderWindow, sf::Time frametime)
 	//Determine several Forces
 	determineGravityBetweenPlanets();
 	//determineElasticForcesBetweenPlanets();
-	determineFriction();
+	//determineFriction();
 	determineGravityForPlayer();
 
 	//Update Actual Time Factor
@@ -97,6 +99,9 @@ void Universe::update(sf::RenderWindow *renderWindow, sf::Time frametime)
 
 	//Manage Collisions
 	manageCollisions(renderWindow, usedTime);
+
+	//Fusion of planets
+	manageFusions(usedTime * actualTimeFactor);
 	
 	//Update Render-Things
 	updateView(renderWindow, frametime);
@@ -204,7 +209,7 @@ void Universe::determineElasticForcesBetweenPlanets()
 //Determine Friction
 void Universe::determineFriction()
 {
-	double frictionCoefficient = 1.0E16;
+	double frictionCoefficient = 1.0E15;
 	for (auto planet : mVectorOfPlanets)
 	{
 		sf::Vector2<double> velocity = planet->getVelocity();
@@ -300,10 +305,12 @@ void Universe::manageCollisions(sf::RenderWindow *renderWindow, sf::Time time)
 					double scalarProd = mySFML::scalarProduct(lastDistance, relativeVelocity);
 					sf::Time timeBetweenLastEvolutionAndCollision = -sf::seconds((scalarProd + sqrt(scalarProd * scalarProd + relativeVelocityValue * relativeVelocityValue * (sumOfRadii * sumOfRadii - lastDistanceValue * lastDistanceValue))) / (relativeVelocityValue * relativeVelocityValue)); //Big Error due to circle problem
 					//sf::Time timeBetweenLastEvolutionAndCollision = sf::seconds(0.f);
+					/*
 					std::cout << "------------------------------------------------" << std::endl;
 					std::cout << "relativeVelocityValue: " << relativeVelocityValue << std::endl;
 					std::cout << "distance: " << (distance - sumOfRadii) << std::endl;
 					std::cout << "timeStepOfLastEvolution: " << timeStepOfLastEvolution.asSeconds() << "\t" << "timeBetweenLastEvolutionAndCollision: " << timeBetweenLastEvolutionAndCollision.asSeconds() << std::endl;
+					*/
 					sf::Time timeSinceCollision = timeStepOfLastEvolution - timeBetweenLastEvolutionAndCollision;
 
 					//Evolve backwards in time till collision
@@ -328,22 +335,206 @@ void Universe::manageCollisions(sf::RenderWindow *renderWindow, sf::Time time)
 					sf::Vector2<double> v1Prime = (v1ParaPrime * rHat) + (v1OrthPrime * nHat);
 					sf::Vector2<double> v2Prime = (v2ParaPrime * rHat) + (v2OrthPrime * nHat);
 
-					(*planetIt1)->setVelocity(v1Prime);
-					(*planetIt2)->setVelocity(v2Prime);
+
+					//Friction during collision
+					//Determine Momentum Transfer
+					sf::Vector2<double> momentumTransfer = (v1Prime - planet1Velocity) * planet1Mass;
+					double momentumTransferValue = mySFML::lengthOf(momentumTransfer);
+
+					//Loss of momentum proportional to momentum transfer
+					double const inelasticCollisionConstant = 0.15;
+					double momentumLossValue = inelasticCollisionConstant * momentumTransferValue;
+
+					sf::Vector2<double> momentumLoss1 = -momentumLossValue * mySFML::normalize(v1Prime);
+					sf::Vector2<double> momentumLoss2 = -momentumLossValue * mySFML::normalize(v2Prime);
+
+					(*planetIt1)->setVelocity(v1Prime + (momentumLoss1 / planet1Mass));
+					(*planetIt2)->setVelocity(v2Prime + (momentumLoss2 / planet2Mass));
+
+					double energyLoss1;
+					double energyLoss2;
+
 
 					//Evolve forwards in time till origin
 					evolveSimulation(renderWindow, timeSinceCollision);
 
-					//Friction during collision
-					//(*planetIt1)->setVelocity((*planetIt1)->getVelocity() * 0.95);
-					//(*planetIt2)->setVelocity((*planetIt2)->getVelocity() * 0.95);
+
+					//Color mixing
+					(*planetIt1)->setColor(mySFML::mixColors((*planetIt1)->getColor(), (*planetIt2)->getColor(), 0.7, 0.3));
+					(*planetIt2)->setColor(mySFML::mixColors((*planetIt1)->getColor(), (*planetIt2)->getColor(), 0.3, 0.7));
 				}
 			}
 		}
 	}
 	if (counterOfCollisionFixAttempts != 1)
 	{
-		std::cout << "Number of Fix Attempts: " << counterOfCollisionFixAttempts << std::endl;
+		//std::cout << "Number of Fix Attempts: " << counterOfCollisionFixAttempts << std::endl;
+	}
+}
+
+//Manage the Fusion of Planets
+void Universe::manageFusions(sf::Time time)
+{
+	//Check for near planets
+	unsigned int sizeOfVectorOfPlanets = mVectorOfPlanets.size();
+	for (unsigned int planNum1 = 0; planNum1 < sizeOfVectorOfPlanets; planNum1++)
+	{
+		sf::Vector2<double> plan1Pos = mVectorOfPlanets.at(planNum1)->getPosition();
+		double plan1Rad = mVectorOfPlanets.at(planNum1)->getRadius();
+		unsigned int plan1UniqueNum = mVectorOfPlanets.at(planNum1)->getPlanetNumber();
+		for (unsigned int planNum2 = (planNum1 + 1); planNum2 < sizeOfVectorOfPlanets; planNum2++)
+		{
+			sf::Vector2<double> plan2Pos = mVectorOfPlanets.at(planNum2)->getPosition();
+			double plan2Rad = mVectorOfPlanets.at(planNum2)->getRadius();
+			unsigned int plan2UniqueNum = mVectorOfPlanets.at(planNum2)->getPlanetNumber();
+			double distance = mySFML::lengthOf(plan1Pos - plan2Pos);
+			double fusionDistance = plan1Rad + plan2Rad + 0.05 * myMath::min(plan1Rad, plan2Rad);
+			sf::Vector2u vectorOfTwoNearPlanets = sf::Vector2u(myMath::min(plan1UniqueNum, plan2UniqueNum), myMath::max(plan1UniqueNum, plan2UniqueNum));
+			if (distance < fusionDistance)
+			{
+				//Search in mListOfNearPlanetsTimePairs for existing Pair and add time or Pair in case
+				bool pairAlreadyExists = false;
+				for (std::list<std::pair<sf::Vector2u, sf::Time>>::iterator nearPairListIt = mListOfNearPlanetsTimePairs.begin(); nearPairListIt != mListOfNearPlanetsTimePairs.end(); nearPairListIt++)
+				{
+					if ((*nearPairListIt).first == vectorOfTwoNearPlanets)
+					{
+						pairAlreadyExists = true;
+						(*nearPairListIt).second = (*nearPairListIt).second + time;
+						break;
+					}
+				}
+				if (!pairAlreadyExists)
+				{
+					mListOfNearPlanetsTimePairs.push_back(std::pair<sf::Vector2u, sf::Time>(vectorOfTwoNearPlanets, time));
+				}
+			}
+			else
+			{
+				//Search in mListOfNearPlanetsTimePairs for existing Pair and delete in case
+				for (std::list<std::pair<sf::Vector2u, sf::Time>>::iterator nearPairListIt = mListOfNearPlanetsTimePairs.begin(); nearPairListIt != mListOfNearPlanetsTimePairs.end(); )
+				{
+					if ((*nearPairListIt).first == vectorOfTwoNearPlanets)
+					{
+						nearPairListIt = mListOfNearPlanetsTimePairs.erase(nearPairListIt);
+						break;
+					}
+					else
+					{
+						nearPairListIt++;
+					}
+				}
+			}
+		}
+	}
+
+	//Merge two planets if a critical time is passed
+	sf::Time const mergeTimeConstant = sf::seconds(600.f);
+	while (true) //Repeat till no merges occur anymore!
+	{
+		bool planetsAreMerged = false;
+		for (std::list<std::pair<sf::Vector2u, sf::Time>>::iterator nearPairListIt = mListOfNearPlanetsTimePairs.begin(); nearPairListIt != mListOfNearPlanetsTimePairs.end(); )
+		{
+			planetsAreMerged = false;
+			Planet *newPlanetPointer = nullptr;
+			unsigned int planet1UniqueNum;
+			unsigned int planet2UniqueNum;
+			if ((*nearPairListIt).second > mergeTimeConstant)
+			{
+				//Create a new Planet and delete the old ones
+				planetsAreMerged = true;
+
+				planet1UniqueNum = (*nearPairListIt).first.x;
+				planet2UniqueNum = (*nearPairListIt).first.y;
+
+				Planet *planet1UnsafePointer = nullptr;
+				Planet *planet2UnsafePointer = nullptr;
+
+				unsigned int sizeOfPlanetVector = mVectorOfPlanets.size();
+				for (unsigned int planNum = 0; planNum < sizeOfPlanetVector; planNum++)
+				{
+					if (mVectorOfPlanets.at(planNum)->getPlanetNumber() == planet1UniqueNum)
+					{
+						planet1UnsafePointer = mVectorOfPlanets.at(planNum);
+					}
+					if (mVectorOfPlanets.at(planNum)->getPlanetNumber() == planet2UniqueNum)
+					{
+						planet2UnsafePointer = mVectorOfPlanets.at(planNum);
+					}
+				}
+
+				double plan1Mass = planet1UnsafePointer->getMass();
+				double plan2Mass = planet2UnsafePointer->getMass();
+
+				double plan1Density = planet1UnsafePointer->getDensity();
+				double plan2Density = planet2UnsafePointer->getDensity();
+
+				sf::Vector2<double> plan1Pos = planet1UnsafePointer->getPosition();
+				sf::Vector2<double> plan2Pos = planet2UnsafePointer->getPosition();
+
+				sf::Vector2<double> plan1Vel = planet1UnsafePointer->getVelocity();
+				sf::Vector2<double> plan2Vel = planet2UnsafePointer->getVelocity();
+
+				sf::Color plan1Color = planet1UnsafePointer->getColor();
+				sf::Color plan2Color = planet2UnsafePointer->getColor();
+
+
+				double newMass = plan1Mass + plan2Mass;
+				double newDensity = 0.5 * (plan1Density + plan2Density); //Error! Density is not mean value!!!!!!!!!!!! Others similarly!!!!
+				sf::Vector2<double> newPosition = 0.5 * (plan1Pos + plan2Pos);
+				sf::Vector2<double> newVelocity = 0.5 * (plan1Vel + plan2Vel);
+				double newTemperature;
+				sf::Color newColor = mySFML::mixColors(plan1Color, plan2Color, 0.5f, 0.5f);
+				newPlanetPointer = new Planet(newMass, newDensity, newPosition, newVelocity, newColor);
+				mVectorOfPlanets.push_back(newPlanetPointer);
+
+				delete planet1UnsafePointer;
+				delete planet2UnsafePointer;
+				planet1UnsafePointer = nullptr;
+				planet2UnsafePointer = nullptr;
+
+				for (std::vector<Planet*>::iterator planIt = mVectorOfPlanets.begin(); planIt != mVectorOfPlanets.end(); )
+				{
+					if (((*planIt)->getPlanetNumber() == planet1UniqueNum) || ((*planIt)->getPlanetNumber() == planet2UniqueNum))
+					{
+						planIt = mVectorOfPlanets.erase(planIt);
+					}
+					else
+					{
+						planIt++;
+					}
+				}
+
+				nearPairListIt = mListOfNearPlanetsTimePairs.erase(nearPairListIt);
+			}
+			else
+			{
+				nearPairListIt++;
+			}
+
+			if (planetsAreMerged)
+			{
+				//Check if mListOfNearPlanetsTimePairs still contains the deleted planetNumbers and handle case
+				unsigned int newPlanetUniqueNumber = newPlanetPointer->getPlanetNumber();
+				for (auto pair : mListOfNearPlanetsTimePairs)
+				{
+					if ((pair.first.x == planet1UniqueNum) || (pair.first.x == planet2UniqueNum))
+					{
+						pair.first.x = newPlanetUniqueNumber;
+					}
+					if ((pair.first.y == planet1UniqueNum) || (pair.first.y == planet2UniqueNum))
+					{
+						pair.first.y = newPlanetUniqueNumber;
+					}
+				}
+
+			}
+		}
+
+		//Exit if no planets are merged anymore
+		if (!planetsAreMerged)
+		{
+			break;
+		}
 	}
 }
 

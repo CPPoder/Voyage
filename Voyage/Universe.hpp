@@ -46,12 +46,14 @@ private:
 
 	unsigned int mDebugCounter = 0;
 
-	bool mFixedEvolveTimeMode = false;
+	bool mFixedEvolveTimeMode = true;
 	sf::Time mFixedEvolveTime = sf::seconds(1.f / 500.f);
 
 	double mLastEnergy;
 	double mActualEnergy;
 	bool mEnergiesValid = false;
+
+	std::list<std::pair<sf::Vector2u, sf::Time>> mListOfNearPlanetsTimePairs;
 
 public:
 	Universe(sf::View *globalView, sf::View *playerView, bool *showPlayerView, sf::Font *font, sf::Texture *playerTexture);
@@ -69,6 +71,7 @@ private:
 	void determineGravityForPlayer();
 	void updateActualTimeFactor();
 	void manageCollisions(sf::RenderWindow *renderWindow, sf::Time time);
+	void manageFusions(sf::Time time);
 	void updateControlOfPlayer();
 	void updateView(sf::RenderWindow *renderWindow, sf::Time frametime);
 	void updateTexts(sf::RenderWindow *renderWindow, sf::Time frametime);
