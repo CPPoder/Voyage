@@ -54,6 +54,7 @@ private:
 	bool mEnergiesValid = false;
 
 	std::list<std::pair<sf::Vector2u, sf::Time>> mListOfNearPlanetsTimePairs;
+	std::list<unsigned int> mListOfPlanetNumbersWithWrongDensity;
 
 public:
 	Universe(sf::View *globalView, sf::View *playerView, bool *showPlayerView, sf::Font *font, sf::Texture *playerTexture);
@@ -72,6 +73,7 @@ private:
 	void updateActualTimeFactor();
 	void manageCollisions(sf::RenderWindow *renderWindow, sf::Time time);
 	void manageFusions(sf::Time time);
+	void normalizeDensities();
 	void updateControlOfPlayer();
 	void updateView(sf::RenderWindow *renderWindow, sf::Time frametime);
 	void updateTexts(sf::RenderWindow *renderWindow, sf::Time frametime);

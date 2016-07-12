@@ -33,8 +33,17 @@ namespace myMath {
 
 	float randIntervalf(int small, int big);
 
-	int abs(int value);
-	float abs(float value);
+	template <typename T> T abs(T value)
+	{
+		if (value < T(0))
+		{
+			return (-value);
+		}
+		else
+		{
+			return value;
+		}
+	}
 
 	int sign(int value);
 	float sign(float value);

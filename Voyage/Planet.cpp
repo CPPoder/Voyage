@@ -5,10 +5,11 @@
 unsigned int Planet::sPlayerNumber = 0;
 
 
-//Constructor
-Planet::Planet(double mass, double density, sf::Vector2<double> position, sf::Vector2<double> velocity, sf::Color color)
+//Constructors
+Planet::Planet(double mass, double density, sf::Vector2<double> position, sf::Vector2<double> velocity, sf::Color color, double intendedDensity)
 	: mMass(mass),
 	  mDensity(density),
+	  mIntendedDensity(intendedDensity),
 	  mRadius(pow(3.0/4.0/3.141592653*mass/density, 1.0/3.0)),
 	  mPosition(position),
 	  mVelocity(velocity),
@@ -26,6 +27,11 @@ Planet::Planet(double mass, double density, sf::Vector2<double> position, sf::Ve
 	sPlayerNumber++;
 }
 
+Planet::Planet(double mass, double density, sf::Vector2<double> position, sf::Vector2<double> velocity, sf::Color color)
+	: Planet::Planet(mass, density, position, velocity, color, density)
+{
+}
+
 //Destructor
 Planet::~Planet()
 {
@@ -41,6 +47,12 @@ void Planet::update(sf::RenderWindow *renderWindow, sf::Time frametime)
 	mVelocity = mVelocity + mAcceleration * static_cast<double>(frametime.asSeconds());
 	mPosition = mPosition + mVelocity * static_cast<double>(frametime.asSeconds());
 	pCircleShape->setPosition(static_cast<sf::Vector2f>(mPosition));
+
+	/*
+	mRadius = pow(3.0 / 4.0 / 3.141592653*mMass / mDensity, 1.0 / 3.0);
+	pCircleShape->setRadius(mRadius);
+	pCircleShape->setOrigin(pCircleShape->getRadius(), pCircleShape->getRadius());
+	*/
 }
 
 //Handle Events
@@ -66,6 +78,14 @@ double Planet::getRadius() const
 double Planet::getDensity() const
 {
 	return mDensity;
+}
+double Planet::getIntendedDensity() const
+{
+	return mIntendedDensity;
+}
+double Planet::getVolume() const
+{
+	return (mMass / mDensity);
 }
 sf::Vector2<double> Planet::getPosition() const
 {
@@ -97,6 +117,14 @@ sf::Color Planet::getColor() const
 }
 
 //Setter
+void Planet::setDensity(double density)
+{
+	mDensity = density;
+	
+	mRadius = pow(3.0 / 4.0 / 3.141592653*mMass / mDensity, 1.0 / 3.0);
+	pCircleShape->setRadius(mRadius);
+	pCircleShape->setOrigin(pCircleShape->getRadius(), pCircleShape->getRadius());
+}
 void Planet::resetForces()
 {
 	mForces = sf::Vector2<double>(0.0, 0.0);

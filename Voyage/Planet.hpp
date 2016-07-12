@@ -16,6 +16,8 @@ private:
 	double mDensity;
 	double mRadius;
 
+	double mIntendedDensity;
+
 	sf::Vector2<double> mPosition;
 	sf::Vector2<double> mVelocity;
 	sf::Vector2<double> mAcceleration;
@@ -30,6 +32,7 @@ private:
 	unsigned int mPlanetNumber;
 
 public:
+	Planet(double mass, double density, sf::Vector2<double> position, sf::Vector2<double> velocity, sf::Color color, double intendedDensity);
 	Planet(double mass, double density, sf::Vector2<double> position, sf::Vector2<double> velocity, sf::Color color);
 	~Planet();
 
@@ -40,6 +43,8 @@ public:
 	double getMass() const;
 	double getRadius() const;
 	double getDensity() const;
+	double getIntendedDensity() const;
+	double getVolume() const;
 	sf::Vector2<double> getPosition() const;
 	sf::Vector2<double> getVelocity() const;
 	sf::Vector2<double> getAcceleration() const;
@@ -48,6 +53,7 @@ public:
 	unsigned int getPlanetNumber() const;
 	sf::Color getColor() const;
 
+	void setDensity(double density);
 	void resetForces();
 	void setForces(sf::Vector2<double> forces);
 	void addForce(sf::Vector2<double> force);

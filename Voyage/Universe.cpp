@@ -102,6 +102,7 @@ void Universe::update(sf::RenderWindow *renderWindow, sf::Time frametime)
 
 	//Fusion of planets
 	manageFusions(usedTime * actualTimeFactor);
+	normalizeDensities();
 	
 	//Update Render-Things
 	updateView(renderWindow, frametime);
@@ -372,6 +373,7 @@ void Universe::manageCollisions(sf::RenderWindow *renderWindow, sf::Time time)
 	}
 }
 
+
 //Manage the Fusion of Planets
 void Universe::manageFusions(sf::Time time)
 {
@@ -468,6 +470,9 @@ void Universe::manageFusions(sf::Time time)
 				double plan1Density = planet1UnsafePointer->getDensity();
 				double plan2Density = planet2UnsafePointer->getDensity();
 
+				double plan1Vol = planet1UnsafePointer->getVolume();
+				double plan2Vol = planet2UnsafePointer->getVolume();
+
 				sf::Vector2<double> plan1Pos = planet1UnsafePointer->getPosition();
 				sf::Vector2<double> plan2Pos = planet2UnsafePointer->getPosition();
 
@@ -479,13 +484,61 @@ void Universe::manageFusions(sf::Time time)
 
 
 				double newMass = plan1Mass + plan2Mass;
-				double newDensity = 0.5 * (plan1Density + plan2Density); //Error! Density is not mean value!!!!!!!!!!!! Others similarly!!!!
-				sf::Vector2<double> newPosition = 0.5 * (plan1Pos + plan2Pos);
-				sf::Vector2<double> newVelocity = 0.5 * (plan1Vel + plan2Vel);
-				double newTemperature;
-				sf::Color newColor = mySFML::mixColors(plan1Color, plan2Color, 0.5f, 0.5f);
-				newPlanetPointer = new Planet(newMass, newDensity, newPosition, newVelocity, newColor);
+				double newIntendedDensity = newMass / (plan1Vol + plan2Vol);
+				sf::Vector2<double> newPosition = (plan1Mass / newMass) * plan1Pos + (plan2Mass / newMass) * plan2Pos;
+				sf::Vector2<double> newVelocity = (plan1Mass / newMass) * plan1Vel + (plan2Mass / newMass) * plan2Vel;
+				double newTemperature; //Determine EnergyLoss and mix of old temperatures
+				sf::Color newColor = mySFML::mixColors(plan1Color, plan2Color, (plan1Mass / newMass), (plan2Mass / newMass));
+				//Calculate newDensity such that no collisions happen!
+				unsigned int size = mVectorOfPlanets.size();
+				double minimalDistance;
+				bool minimalDistanceValid = false;
+				for (unsigned int planNum = 0; planNum < size; planNum++)
+				{
+					Planet *planetPointer = mVectorOfPlanets.at(planNum);
+					if ((planetPointer == planet1UnsafePointer) || (planetPointer == planet2UnsafePointer))
+					{
+						continue;
+					}
+					double dist = myMath::abs(mySFML::lengthOf(planetPointer->getPosition() - newPosition) - planetPointer->getRadius());
+					if (minimalDistanceValid)
+					{
+						if (dist < minimalDistance)
+						{
+							minimalDistance = dist;
+						}
+					}
+					else
+					{
+						minimalDistance = dist;
+						minimalDistanceValid = true;
+					}
+				}
+				double newDensity;
+				if (minimalDistanceValid)
+				{
+					newDensity = newMass / (4.0 / 3.0 * 3.141592653 * minimalDistance * minimalDistance * minimalDistance) * 2.0; //Factor 2.0 is only security!!!
+				}
+				else
+				{
+					newDensity = newIntendedDensity;
+				}
+				double usedNewDensity;
+				bool wrongDensityUsed;
+				if (newDensity > newIntendedDensity)
+				{
+					usedNewDensity = newDensity;
+					wrongDensityUsed = true;
+				}
+				else
+				{
+					usedNewDensity = newIntendedDensity;
+					wrongDensityUsed = false;
+				}
+				newPlanetPointer = new Planet(newMass, usedNewDensity, newPosition, newVelocity, newColor, newIntendedDensity);
 				mVectorOfPlanets.push_back(newPlanetPointer);
+
+				mListOfPlanetNumbersWithWrongDensity.push_back(newPlanetPointer->getPlanetNumber());
 
 				delete planet1UnsafePointer;
 				delete planet2UnsafePointer;
@@ -537,6 +590,89 @@ void Universe::manageFusions(sf::Time time)
 		}
 	}
 }
+
+
+//Normalize Densities
+void Universe::normalizeDensities()
+{
+	unsigned int planVecSize = mVectorOfPlanets.size();
+	for (std::list<unsigned int>::iterator wrongDensityPlanetsIt = mListOfPlanetNumbersWithWrongDensity.begin(); wrongDensityPlanetsIt != mListOfPlanetNumbersWithWrongDensity.end(); )
+	{
+		//Does Planet still exist?
+		unsigned int uniquePlanNum = (*wrongDensityPlanetsIt);
+		bool planetExists = false;
+		Planet *planetPointer = nullptr;
+		for (unsigned int planNum = 0; planNum < planVecSize; planNum++)
+		{
+			if (mVectorOfPlanets.at(planNum)->getPlanetNumber() == uniquePlanNum)
+			{
+				planetExists = true;
+				planetPointer = mVectorOfPlanets.at(planNum);
+				break;
+			}
+		}
+
+		//If Planet exists, normalize Density; Else: Erase Number From List
+		if (planetExists) //Normalize Density
+		{
+			double planRad = planetPointer->getRadius();
+			sf::Vector2<double> planPos = planetPointer->getPosition();
+			double planMass = planetPointer->getMass();
+			double planDensity = planetPointer->getDensity();
+			double planIntendedDensity = planetPointer->getIntendedDensity();
+			double distanceMinusRadius;
+			bool distanceMinusRadiusValid = false;
+			for (unsigned int planNum = 0; planNum < planVecSize; planNum++)
+			{
+				Planet *otherPlanetPointer = mVectorOfPlanets.at(planNum);
+				if (uniquePlanNum == otherPlanetPointer->getPlanetNumber())
+				{
+					continue;
+				}
+				double otherPlanRad = otherPlanetPointer->getRadius();
+				sf::Vector2<double> otherPlanPos = otherPlanetPointer->getPosition();
+				double distance = myMath::abs(mySFML::lengthOf(planPos - otherPlanPos) - otherPlanRad);
+				if (distanceMinusRadiusValid)
+				{
+					distanceMinusRadius = myMath::min(distance, distanceMinusRadius);
+				}
+				else
+				{
+					distanceMinusRadius = distance;
+					distanceMinusRadiusValid = true;
+				}
+			}
+			double newPossibleDensity = planMass / (4.0 / 3.0 * 3.141592653 * distanceMinusRadius * distanceMinusRadius * distanceMinusRadius) * 1.01; //1.01: Security Factor
+			double newDensity;
+			bool maximalRadiusAchieved;
+			if (newPossibleDensity > planIntendedDensity)
+			{
+				newDensity = newPossibleDensity;
+				maximalRadiusAchieved = false;
+			}
+			else
+			{
+				newDensity = planIntendedDensity;
+				maximalRadiusAchieved = true;
+			}
+			planetPointer->setDensity(newDensity);
+
+			if (maximalRadiusAchieved)
+			{
+				wrongDensityPlanetsIt = mListOfPlanetNumbersWithWrongDensity.erase(wrongDensityPlanetsIt);
+			}
+			else
+			{
+				wrongDensityPlanetsIt++;
+			}
+		}
+		else //Erase Number From the List
+		{
+			wrongDensityPlanetsIt = mListOfPlanetNumbersWithWrongDensity.erase(wrongDensityPlanetsIt);
+		}
+	}
+}
+
 
 //Update the Control of the Player (User Input)
 void Universe::updateControlOfPlayer()

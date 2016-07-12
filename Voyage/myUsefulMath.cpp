@@ -20,30 +20,6 @@ namespace myMath {
 		return static_cast<float>(myMath::randIntervali(small, big));
 	}
 
-	int myMath::abs(int value)
-	{
-		if (value < 0)
-		{
-			return (-value);
-		}
-		else
-		{
-			return value;
-		}
-	}
-
-	float myMath::abs(float value)
-	{
-		if (value < 0)
-		{
-			return (-value);
-		}
-		else
-		{
-			return value;
-		}
-	}
-
 	int myMath::sign(int value)
 	{
 		if (value < 0)
